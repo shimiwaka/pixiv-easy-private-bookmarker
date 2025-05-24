@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "piixiv 非公開ブクマボタン",
+  "version": "1.0",
+  "description": "Pixivに非公開ブクマボタンをデフォルトで表示します",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["*://*.pixiv.net/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.pixiv.net/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+} 

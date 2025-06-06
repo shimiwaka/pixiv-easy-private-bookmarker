@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "piixiv 非公開ブクマボタン",
+  "name": "非公開ブクマボタン",
   "version": "1.0",
   "description": "Pixivに非公開ブクマボタンをデフォルトで表示します",
   "permissions": ["activeTab", "scripting"],
@@ -11,5 +11,11 @@
       "js": ["content.js"],
       "run_at": "document_end"
     }
-  ]
+  ],
+  "action": {
+    "default_title": "非公開ブックマーク"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
 } 

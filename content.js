@@ -21,14 +21,65 @@ function findElementByText(text) {
 }
 
 function addPrivateBookmark() {
-  console.log('Adding private bookmark via UI...');
-  
   // 1. まず、メニューを開くボタンをクリック
-  const triggerButton = document.querySelector('#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-becae342-1.gpnXqv > section > div.sc-a74b10e0-1.hljIHg > button');
+  // 複数のセレクターを試してより堅牢にする
+  const triggerButtonSelectors = [
+    // pathタグを含むSVGメニューボタン
+    'button path[d*="M16,18 C14.8954305,18"]',
+    'button svg path[d*="M16,18 C14.8954305,18"]',
+    'path[d*="M16,18 C14.8954305,18"]',
+    'svg path[d*="M16,18 C14.8954305,18"]',
+  ];
   
-  if (triggerButton) {
-    console.log('Clicking trigger button...');
-    triggerButton.click();
+  let triggerButton = null;
+  
+  for (let selector of triggerButtonSelectors) {
+    triggerButton = document.querySelector(selector);
+    if (triggerButton) {
+      break;
+    }
+  }
+  
+  if (triggerButton) {    
+    // path要素やSVG要素の場合は親のbutton要素を取得
+    let buttonToClick = triggerButton;
+    if (triggerButton.tagName === 'PATH') {
+      // pathタグの場合、親をたどってボタンを見つける
+      let parent = triggerButton.parentElement;
+      let level = 1;
+      while (parent && parent.tagName !== 'BUTTON') {
+        console.log(`Parent level ${level}:`, parent.tagName, parent);
+        parent = parent.parentElement;
+        level++;
+        if (level > 10) { // 無限ループ防止
+          console.log('Too many levels, breaking');
+          break;
+        }
+      }
+      if (parent && parent.tagName === 'BUTTON') {
+        buttonToClick = parent;
+      } else {
+        alert('ボタン要素が見つかりませんでした。path要素から' + level + 'レベル辿りました。');
+      }
+    } else if (triggerButton.tagName === 'SVG') {
+      // SVG要素の場合は親のbutton要素を取得
+      if (triggerButton.parentElement.tagName === 'BUTTON') {
+        buttonToClick = triggerButton.parentElement;
+        console.log('SVG found, clicking parent button instead');
+      }
+    }
+    
+    if (typeof buttonToClick.click === 'function') {
+      buttonToClick.click();
+    } else {
+      // フォールバック: イベントを手動で発火
+      const event = new MouseEvent('click', {
+        view: window,
+        bubbles: true,
+        cancelable: true
+      });
+      buttonToClick.dispatchEvent(event);
+    }
     
     // 少し待ってから非公開ブックマークボタンを探す
     setTimeout(() => {
@@ -49,37 +100,51 @@ function addPrivateBookmark() {
           originalOpacity = dialog.style.opacity || '1';
           dialog.style.opacity = '0';
           dialog.style.transition = 'opacity 0.1s ease';
-          console.log('Made menu dialog transparent:', selector);
           break;
         }
       }
       
       // 2. 「非公開で」という文字列を含む要素を探してクリック
       const privateBookmarkElements = findElementByText('非公開で');
-      console.log('Found elements with "非公開で":', privateBookmarkElements.length);
       
       if (privateBookmarkElements.length > 0) {
-        // 最初に見つかった要素をクリック
-        const targetElement = privateBookmarkElements[0];
-        console.log('Found private bookmark element by text:', targetElement);
-        targetElement.click();
+        // 最初の3つまで順番に試す
+        let clicked = false;
+        const maxTries = Math.min(3, privateBookmarkElements.length);
         
-        // クリック後、少し待ってからダイアログを元に戻す
-        setTimeout(() => {
+        for (let i = 0; i < maxTries && !clicked; i++) {
+          const targetElement = privateBookmarkElements[i];
+          
+          try {
+            targetElement.click();
+            clicked = true;
+            
+            // クリック後、少し待ってからダイアログを元に戻す
+            setTimeout(() => {
+              if (hiddenDialog) {
+                hiddenDialog.style.opacity = originalOpacity;
+              }
+            }, 200);
+            
+          } catch (error) {
+            console.log(`Failed to click element ${i + 1}:`, error);
+            // 次の要素を試す
+          }
+        }
+        
+        if (!clicked) {
+          console.log('All private bookmark elements failed to click');
+          // ダイアログを元に戻す
           if (hiddenDialog) {
             hiddenDialog.style.opacity = originalOpacity;
           }
-        }, 200);
+        }
         
       } else {
         console.log('Private bookmark element not found by text, trying fallback selectors...');
         
         // フォールバック: 従来のセレクターも試す
         const fallbackSelectors = [
-          'body > div:nth-child(27) > div > div > div > ul > li:nth-child(1) > span',
-          'body > div:nth-child(28) > div > div > div > ul > li:nth-child(1) > span',
-          'body > div:nth-child(26) > div > div > div > ul > li:nth-child(1) > span',
-          'body > div:nth-child(29) > div > div > div > ul > li:nth-child(1) > span',
           '[role="dialog"] ul li:first-child span',
           '[role="dialog"] ul li:first-child'
         ];
@@ -113,7 +178,8 @@ function addPrivateBookmark() {
     }, 300);
   } else {
     console.log('Trigger button not found');
-    alert('ブックマークメニューボタンが見つかりませんでした');
+    console.log('Tried selectors:', triggerButtonSelectors);
+    alert('ブックマークメニューボタンが見つかりませんでした\n試したセレクター数: ' + triggerButtonSelectors.length);
   }
 }
 
@@ -123,7 +189,27 @@ function addPrivateBookmarkButton() {
     return;
   }
 
-  const bookmarkButton = document.querySelector('#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-becae342-1.gpnXqv > section > div.sc-a74b10e0-3.fCOpda > button');
+  // 複数のセレクターを試してより堅牢にする
+  const bookmarkButtonSelectors = [
+    // 新しいセレクター対応
+    '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-75e3ed2d-1.itLRwR > section > div.sc-d1c020eb-1.eYpYdX > button',
+    // 元のセレクター
+    '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-becae342-1.gpnXqv > section > div.sc-a74b10e0-3.fCOpda > button',
+    // より汎用的なセレクター
+    'main section button[type="button"]',
+    'section button[type="button"]',
+    '[data-gtm-value]',
+    'button[data-click-action]'
+  ];
+  
+  let bookmarkButton = null;
+  
+  for (let selector of bookmarkButtonSelectors) {
+    bookmarkButton = document.querySelector(selector);
+    if (bookmarkButton) {
+      break;
+    }
+  }
 
   if (bookmarkButton && getIllustId()) {
     const parentContainer = bookmarkButton.parentNode;
@@ -151,7 +237,6 @@ function addPrivateBookmarkButton() {
     
     // 元のボタンの左側に追加
     parentContainer.insertBefore(privateButton, bookmarkButton);
-    console.log('Private bookmark button added');
   }
 }
 
@@ -159,7 +244,6 @@ function addPrivateBookmarkButton() {
 function checkUrlChange() {
   if (currentUrl !== window.location.href) {
     currentUrl = window.location.href;
-    console.log('URL changed to:', currentUrl);
     
     // URLが変わったら既存のボタンを削除して再作成
     const existingButton = document.querySelector('.private-bookmark-btn');
@@ -208,4 +292,18 @@ setInterval(() => {
 observer.observe(document.body, {
   childList: true,
   subtree: true
+});
+
+// Background scriptからのメッセージを受信
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "addPrivateBookmark") {
+    // アートワークページかどうかをチェック
+    if (getIllustId()) {
+      addPrivateBookmark();
+      sendResponse({ success: true });
+    } else {
+      sendResponse({ success: false, error: "Not an artwork page" });
+    }
+  }
+  return true;
 }); 

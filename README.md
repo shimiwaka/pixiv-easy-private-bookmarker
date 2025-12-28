@@ -1,37 +1,27 @@
-# Pixiv 非公開ブクマボタン
+# pixv easy private bookmarker
 
-Pixiv に非公開ブクマボタンをデフォルトで表示する Chrome 拡張機能です。
+This is chrome extension that defaultfy adds private bookmark button to pixiv artwork's page.
 
-- Pixiv の作品ページで「★非公開ブックマーク」ボタンを表示
-- ワンクリックで非公開ブックマークに追加可能
+![sample](sample01.png)
 
-![動作サンプル](sample01.png)
+## How to install
 
-## インストール方法
+### 1. clone this project
+Please download or clone this project by git.
 
-### 1. ファイルのダウンロード
-このプロジェクトをダウンロードまたはクローンします。
+### 2. import as chrome extension
+1. open Google Chrome
+2. enter  `chrome://extensions/` to URL bar
+3. toggle on `開発者モード` at upper right
+4. click `パッケージ化されていない拡張機能を読み込む`
+5. select `pixiv-easy-private-bookmarker` downloaded at step 1
 
-### 2. Chrome 拡張機能として読み込み
-1. Google Chrome を開く
-2. アドレスバーに `chrome://extensions/` と入力して Enter を押す
-3. 右上にある「デベロッパーモード」をオンにする
-4. 「パッケージ化されていない拡張機能を読み込む」をクリック
-5. `pixiv-easy-private-bookmarker` フォルダを選択
-6. 拡張機能が追加されたことを確認
+## How to use
 
-## 使い方
+1. open pixiv artwork's page
+2. click `★非公開ブックマーク`
+3. the artwork will be added as private bookmark
 
-1. Pixiv の作品ページを開く
-2. 「★非公開ブックマーク」ボタンをクリック
-3. 非公開ブックマークに追加される
+## caution
 
-## 対応ブラウザ
-
-- Google Chrome
-- その他の Chromium 系ブラウザ（Microsoft Edge 等）
-
-## 注意事項
-
-- この拡張機能は Pixiv の既存機能を利用しているため、Pixiv のサイト構造が変更された場合、動作しなくなる可能性があります
-- 非公開ブックマーク機能を使用するには、Pixiv にログインしている必要があります
+- this extension depends on pixiv HTML tag architecture, so if it was changed, this extension won't work.

@@ -189,55 +189,106 @@ function addPrivateBookmarkButton() {
     return;
   }
 
-  // 複数のセレクターを試してより堅牢にする
-  const bookmarkButtonSelectors = [
-    // 新しいセレクター対応
-    '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-75e3ed2d-1.itLRwR > section > div.sc-d1c020eb-1.eYpYdX > button',
-    // 元のセレクター
-    '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-becae342-1.gpnXqv > section > div.sc-a74b10e0-3.fCOpda > button',
-    // より汎用的なセレクター
-    'main section button[type="button"]',
-    'section button[type="button"]',
-    '[data-gtm-value]',
-    'button[data-click-action]'
+  if (!getIllustId()) {
+    return;
+  }
+
+  let insertionTarget = null;
+  let parentContainer = null;
+
+  // まず「...」メニューボタンを探す（優先）
+  const triggerButtonSelectors = [
+    'button path[d*="M16,18 C14.8954305,18"]',
+    'button svg path[d*="M16,18 C14.8954305,18"]',
+    'path[d*="M16,18 C14.8954305,18"]',
+    'svg path[d*="M16,18 C14.8954305,18"]',
   ];
-  
-  let bookmarkButton = null;
-  
-  for (let selector of bookmarkButtonSelectors) {
-    bookmarkButton = document.querySelector(selector);
-    if (bookmarkButton) {
+
+  let triggerButton = null;
+
+  for (let selector of triggerButtonSelectors) {
+    triggerButton = document.querySelector(selector);
+    if (triggerButton) {
       break;
     }
   }
 
-  if (bookmarkButton && getIllustId()) {
-    const parentContainer = bookmarkButton.parentNode;
-    
-    // 新しいボタンを作成
-    const privateButton = document.createElement('button');
-    privateButton.innerHTML = '★非公開ブックマーク';
-    privateButton.className = 'private-bookmark-btn';
-    privateButton.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      addPrivateBookmark();
-    };
-    
-    // スタイルを設定
-    privateButton.style.textDecoration = 'none';
-    privateButton.style.color = 'inherit';
-    privateButton.style.padding = '8px';
-    privateButton.style.border = '1px solid #ccc';
-    privateButton.style.borderRadius = '4px';
-    privateButton.style.cursor = 'pointer';
-    privateButton.style.marginRight = '8px';
-    privateButton.style.backgroundColor = '#fff';
-    privateButton.style.fontSize = '14px';
-    
-    // 元のボタンの左側に追加
-    parentContainer.insertBefore(privateButton, bookmarkButton);
+  if (triggerButton) {
+    // path要素やSVG要素の場合は親のbutton要素を取得
+    let menuButton = triggerButton;
+    const tagName = triggerButton.tagName.toUpperCase();
+    if (tagName === 'PATH' || tagName === 'SVG') {
+      let parent = triggerButton.parentElement;
+      let level = 0;
+      while (parent && parent.tagName.toUpperCase() !== 'BUTTON') {
+        parent = parent.parentElement;
+        level++;
+        if (level > 10) { // 無限ループ防止
+          break;
+        }
+      }
+      if (parent && parent.tagName.toUpperCase() === 'BUTTON') {
+        menuButton = parent;
+      }
+    }
+
+    if (menuButton && menuButton.tagName.toUpperCase() === 'BUTTON') {
+      insertionTarget = menuButton;
+      parentContainer = menuButton.parentNode;
+    }
   }
+
+  // 「...」メニューボタンが見つからない場合は、元のセレクターでフォールバック
+  if (!insertionTarget) {
+    const bookmarkButtonSelectors = [
+      // 新しいセレクター対応
+      '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-75e3ed2d-1.itLRwR > section > div.sc-d1c020eb-1.eYpYdX > button',
+      // 元のセレクター
+      '#__next > div > div:nth-child(2) > div.sc-1e6e6d57-0.gQkIQm.__top_side_menu_body > div.sc-8d5ac044-0.cHpDVl > div > div.sc-8d5ac044-3.hvOssX > main > section > div.sc-7d1a8035-0.cxsjmo > div > div.sc-e000c79a-0.vZKXM > div > div.sc-becae342-1.gpnXqv > section > div.sc-a74b10e0-3.fCOpda > button',
+    ];
+
+    let bookmarkButton = null;
+
+    for (let selector of bookmarkButtonSelectors) {
+      bookmarkButton = document.querySelector(selector);
+      if (bookmarkButton) {
+        break;
+      }
+    }
+
+    if (bookmarkButton) {
+      insertionTarget = bookmarkButton;
+      parentContainer = bookmarkButton.parentNode;
+    }
+  }
+
+  if (!insertionTarget || !parentContainer) {
+    return;
+  }
+
+  // 新しいボタンを作成
+  const privateButton = document.createElement('button');
+  privateButton.innerHTML = '★非公開ブックマーク';
+  privateButton.className = 'private-bookmark-btn';
+  privateButton.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addPrivateBookmark();
+  };
+
+  // スタイルを設定
+  privateButton.style.textDecoration = 'none';
+  privateButton.style.color = 'inherit';
+  privateButton.style.padding = '8px';
+  privateButton.style.border = '1px solid #ccc';
+  privateButton.style.borderRadius = '4px';
+  privateButton.style.cursor = 'pointer';
+  privateButton.style.marginRight = '8px';
+  privateButton.style.backgroundColor = '#fff';
+  privateButton.style.fontSize = '14px';
+
+  // 挿入対象の左側に追加
+  parentContainer.insertBefore(privateButton, insertionTarget);
 }
 
 // URL変更を検知する関数
